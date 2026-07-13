@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Cardle Oyunu</title>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f5f6fa; color: #2f3640; text-align: center; margin: 0; padding: 40px 20px; }
+        .container { max-width: 950px; margin: 0 auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        h1 { color: #2f3542; font-size: 2.8rem; margin-bottom: 5px; font-weight: 800; letter-spacing: -1px; }
+        h1 span { color: #ff4757; }
+        p { color: #747d8c; margin-bottom: 35px; font-size: 1.1rem; }
+        
+        .search-container { position: relative; width: 65%; margin-right: 10px; }
+        .search-box { display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; }
+        input[type="text"] { padding: 15px 20px; width: 100%; font-size: 16px; border-radius: 12px; border: 2px solid #e1e8ed; background-color: #fff; color: #2f3640; outline: none; transition: 0.3s; font-weight: 500; box-sizing: border-box; }
+        input[type="text"]:focus { border-color: #ff4757; }
+        
+        .suggestions { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #e1e8ed; border-radius: 12px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: none; text-align: left; }
+        .suggestions div { padding: 12px 20px; cursor: pointer; font-weight: 500; color: #2f3640; }
+        .suggestions div:hover { background-color: #f5f6fa; color: #ff4757; }
+
+        .btn-tahmin { padding: 15px 30px; font-size: 16px; border-radius: 12px; border: none; background-color: #ff4757; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3); height: 54px; }
+        .btn-tahmin:hover { background-color: #ff6b81; transform: translateY(-2px); }
+        
+        .btn-sifirla { padding: 15px 30px; font-size: 16px; border-radius: 12px; border: none; background-color: #2ed573; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; display: none; margin: 0 auto 30px auto; box-shadow: 0 5px 15px rgba(46, 213, 115, 0.3); }
+        .btn-sifirla:hover { background-color: #26af5f; transform: translateY(-2px); }
+
+        .tablo { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
+        .tablo th { color: #747d8c; font-size: 14px; text-transform: uppercase; padding: 15px; font-weight: 700; text-align: center; }
+        .tablo td { padding: 20px; font-size: 16px; font-weight: bold; color: white; text-align: center; border: none; }
+        .tablo tr td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+        .tablo tr td:last-child { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+        
+        .dogru { background-color: #2ed573 !important; animation: flip 0.6s ease forwards; }
+        .yanlis { background-color: #ff4757 !important; animation: flip 0.6s ease forwards; }
+        
+        @keyframes flip {
+            0% { transform: rotateX(-90deg); opacity: 0; }
+            100% { transform: rotateX(0deg); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 CAR<span>DLE</span></h1>
+        <p>Gizli aracı bulmak için arama çubuğuna bir araba modeli yazıp tahmin edin!</p>
+        
+        <button id="sifirlaButonu" class="btn-sifirla" onclick="yenidenBaslat()">🔄 Yeni Oyuna Başla</button>
+
+        <div class="search-box" id="aramaAlani">
+            <div class="search-container">
+                <input type="text" id="aracGirdisi" placeholder="Örn: Toyota Corolla" oninput="aramaYap()" autocomplete="off">
+                <div id="oneriKutusu" class="suggestions"></div>
+            </div>
+            <button class="btn-tahmin" onclick="tahminGonder()">Tahmin Et</button>
+        </div>
+
+        <table class="tablo">
+            <thead>
+                <tr>
+                    <th>Marka</th>
+                    <th>Model</th>
+                    <th>Kasa</th>
+                    <th>Yakıt</th>
+                    <th>Motor</th>
+                    <th>Yıl Aralığı</th>
+                    <th>Ülke</th>
+                </tr>
+            </thead>
+            <tbody id="sonucGövdesi">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+       const tumAraclar = [
+    // --- ESKİLER ---
+    "Fiat Linea", "Fiat Albea", "Fiat Punto", "Renault Symbol", "Renault Fluence", "Renault Kadjar",
+    "Hyundai Accent Era", "Hyundai Accent Blue", "Hyundai Getz", "Toyota Auris", "Toyota C-HR",
+    "Honda Jazz", "Volkswagen Jetta", "Volkswagen Caddy", "Ford Fiesta (Eski)", "Ford Focus (Eski)",
+    "Ford Mondeo", "Opel Astra J", "Opel Insignia", "Peugeot 301", "Peugeot 508", "Citroen C3 Aircross",
+    "Skoda Scala", "Seat Toledo", "Kia Ceed", "Kia Cerato", "Nissan X-Trail", "Chevrolet Cruze",
+    "Chevrolet Aveo", "Dacia Logan MCV", "Dacia Lodgy", "Toyota Corolla", "Toyota Yaris", 
+    "Honda Civic", "Honda City", "Honda HR-V", "Volkswagen Golf", "Volkswagen Passat", 
+    "Volkswagen Polo", "Volkswagen Tiguan", "Fiat Egea", "Fiat Egea Cross", "Fiat Fiorino", 
+    "Fiat Panda", "Renault Clio", "Renault Megane", "Renault Captur", "Renault Austral", 
+    "Renault Taliant", "Hyundai i20", "Hyundai i10", "Hyundai Elantra", "Hyundai Tucson", 
+    "Hyundai Bayon", "Dacia Duster", "Dacia Sandero Stepway", "Dacia Jogger", "Peugeot 208", 
+    "Peugeot 308", "Peugeot 2008", "Peugeot 3008", "Opel Corsa", "Opel Astra", "Opel Mokka", 
+    "Opel Crossland", "Citroen C3", "Citroen C4", "Citroen C5 Aircross", "Citroen C-Elysee", 
+    "Skoda Fabia", "Skoda Octavia", "Skoda Superb", "Skoda Kamiq", "Seat Ibiza", "Seat Leon", 
+    "Seat Arona", "Kia Picanto", "Kia Rio", "Kia Stonic", "Kia Sportage", "Ford Fiesta", 
+    "Ford Focus", "Ford Puma", "Nissan Micra", "Nissan Qashqai", "Nissan Juke",
+    
+    // --- YENİ EKLENENLER (114 Adet) ---
+    "Tofaş Şahin", "Tofaş Doğan", "Tofaş Kartal", "Renault Toros", "Renault Broadway", "Fiat Tipo", 
+    "Fiat Tempra", "Fiat Marea", "Fiat Bravo", "Fiat Doblo", "Renault Kangoo", "Ford Tourneo Courier", 
+    "Peugeot Rifter", "Citroen Berlingo", "Volkswagen Transporter", "Ford Transit", "Toyota Hilux", 
+    "Mitsubishi L200", "Volkswagen Amarok", "Ford Ranger", "Isuzu D-Max", "Nissan Navara", "Togg T10X", 
+    "Tesla Model Y", "Tesla Model 3", "Porsche Taycan", "Porsche Macan", "Porsche Cayenne", 
+    "Mercedes-Benz C-Serisi", "Mercedes-Benz E-Serisi", "Mercedes-Benz A-Serisi", "Mercedes-Benz CLA", 
+    "Mercedes-Benz GLA", "Mercedes-Benz GLC", "Mercedes-Benz G-Serisi", "BMW 1 Serisi", "BMW 3 Serisi", 
+    "BMW 5 Serisi", "BMW X1", "BMW X3", "BMW X5", "BMW 4 Serisi", "Audi A3", "Audi A4", "Audi A5", 
+    "Audi A6", "Audi Q3", "Audi Q5", "Audi Q7", "Volvo XC40", "Volvo XC60", "Volvo XC90", "Volvo S60", 
+    "Volvo S90", "Volvo V40", "Honda Accord", "Honda CR-V", "Mazda 3", "Mazda 6", "Mazda CX-5", 
+    "Subaru Impreza", "Subaru Forester", "Subaru XV", "Suzuki Swift", "Suzuki Vitara", "Suzuki Jimny", 
+    "Alfa Romeo Giulietta", "Alfa Romeo 159", "Alfa Romeo Tonale", "Jeep Renegade", "Jeep Compass", 
+    "Jeep Grand Cherokee", "Mini Cooper", "Mini Countryman", "Land Rover Range Rover", 
+    "Land Rover Evoque", "Dacia Spring", "Skoda Kodiaq", "Skoda Karoq", "Skoda Favorit", "Skoda Felicia", 
+    "Skoda Roomster", "Seat Ateca", "Seat Tarraco", "Cupra Formentor", "Cupra Leon", "Hyundai Santa Fe", 
+    "Hyundai Kona", "Hyundai Ioniq 5", "Kia Sorento", "Kia Bongo", "Kia EV6", "Peugeot 5008", "Peugeot 408", 
+    "Citroen C4 X", "Citroen C3 Picasso", "Opel Grandland X", "Opel Combo", "Opel Vectra", "Toyota Rav4", 
+    "Toyota Land Cruiser", "Nissan Note", "Nissan Almera", "Ford Kuga", "Ford C-Max", "Chevrolet Captiva", 
+    "Chevrolet Spark", "Volkswagen Touareg", "Volkswagen Arteon", "Volkswagen Scirocco", "Volkswagen Bora", 
+    "Chery Omoda 5", "Chery Tiggo 7 Pro", "Chery Tiggo 8 Pro"
+];
+
+        function aramaYap() {
+            const girdi = document.getElementById("aracGirdisi").value.toLowerCase();
+            const oneriKutusu = document.getElementById("oneriKutusu");
+            oneriKutusu.innerHTML = "";
+
+            if (!girdi) {
+                oneriKutusu.style.display = "none";
+                return;
+            }
+
+            const eslesenler = tumAraclar.filter(arac => arac.toLowerCase().includes(girdi));
+
+            if (eslesenler.length > 0) {
+                oneriKutusu.style.display = "block";
+                eslesenler.forEach(arac => {
+                    const div = document.createElement("div");
+                    div.innerText = arac;
+                    div.onclick = function() {
+                        document.getElementById("aracGirdisi").value = arac;
+                        oneriKutusu.style.display = "none";
+                    };
+                    oneriKutusu.appendChild(div);
+                });
+            } else {
+                oneriKutusu.style.display = "none";
+            }
+        }
+
+        document.getElementById("aracGirdisi").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                tahminGonder();
+            }
+        });
+
+        document.addEventListener("click", function(e) {
+            if (e.target.id !== "aracGirdisi") {
+                document.getElementById("oneriKutusu").style.display = "none";
+            }
+        });
+
+        function tahminGonder() {
+            const tahminMetni = document.getElementById("aracGirdisi").value.trim();
+            if(!tahminMetni) return alert("Lütfen bir araba adı yazın!");
+
+            fetch('/tahmin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tahmin: tahminMetni })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.hata) return alert(data.hata);
+
+                const gövde = document.getElementById("sonucGövdesi");
+                const yeniSatir = document.createElement("tr");
+                const alanlar = ["marka", "model", "kasa", "yakit", "motor_tipi", "yil", "ulke"];
+                
+                alanlar.forEach(alan => {
+                    const td = document.createElement("td");
+                    td.innerText = data[alan].deger;
+                    td.className = data[alan].durum;
+                    yeniSatir.appendChild(td);
+                });
+
+                gövde.insertBefore(yeniSatir, gövde.firstChild);
+                document.getElementById("aracGirdisi").value = "";
+
+                if(data.kazandi) {
+                    setTimeout(() => alert("🏆 MUHTEŞEM! Gizli arabayı tamamen doğru tahmin ettiniz!"), 400);
+                    document.getElementById("aramaAlani").style.display = "none";
+                    document.getElementById("sifirlaButonu").style.display = "block";
+                }
+            })
+            .catch(err => alert("Sunucuyla bağlantı kurulamadı!"));
+        }
+
+        function yenidenBaslat() {
+            fetch('/sifirla', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if(data.durum === "basarili") {
+                    document.getElementById("sonucGövdesi").innerHTML = "";
+                    document.getElementById("aracGirdisi").value = "";
+                    document.getElementById("aramaAlani").style.display = "flex";
+                    document.getElementById("sifirlaButonu").style.display = "none";
+                    location.reload();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
